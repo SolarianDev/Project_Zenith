@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ==========================================
-# Project Zenith (v2.5)
+# Project Zenith (v3.0)
 # ==========================================
 
 # Colors & Formatting
@@ -11,6 +11,13 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
+
+# Dependency Versions (Update these variables to bump versions)
+PODMAN_VERSION="v5.8.2"
+CONMON_VERSION="v2.2.1"
+CRUN_VERSION="1.28"
+NETAVARK_VERSION="v1.16.0"
+AARDVARK_VERSION="v1.17.1"
 
 # Logging Functions
 log_info() { echo -e "${BLUE}[*] $1${NC}"; }
@@ -72,12 +79,12 @@ download_tool() {
 }
 
 install_podman() {
-    log_info "Downloading Podman Engine (Latest)..."
+    log_info "Downloading Podman Engine (${PODMAN_VERSION})..."
     local TMP_DIR
     TMP_DIR=$(mktemp -d)
     cd "$TMP_DIR"
 
-    wget -q --show-progress "https://github.com/mgoltzsche/podman-static/releases/download/v5.8.2/podman-linux-amd64.tar.gz" -O podman.tar.gz
+    wget -q --show-progress "https://github.com/mgoltzsche/podman-static/releases/download/${PODMAN_VERSION}/podman-linux-amd64.tar.gz" -O podman.tar.gz
     
     if ! file podman.tar.gz | grep -qi "gzip"; then
         fatal "Podman archive is invalid or corrupted."
@@ -104,17 +111,17 @@ install_dependencies() {
     log_info "Downloading Dependencies..."
     cd "$INSTALL_DIR"
 
-    download_tool "https://github.com/containers/conmon/releases/download/v2.1.12/conmon.amd64" "conmon" "ELF"
+    download_tool "https://github.com/containers/conmon/releases/download/${CONMON_VERSION}/conmon.amd64" "conmon" "ELF"
     chmod +x conmon
 
-    download_tool "https://github.com/containers/crun/releases/download/1.19.1/crun-1.19.1-linux-amd64" "crun" "ELF"
+    download_tool "https://github.com/containers/crun/releases/download/${CRUN_VERSION}/crun-${CRUN_VERSION}-linux-amd64" "crun" "ELF"
     chmod +x crun
 
-    download_tool "https://github.com/containers/netavark/releases/download/v1.10.3/netavark.gz" "netavark.gz" "gzip"
+    download_tool "https://github.com/containers/netavark/releases/download/${NETAVARK_VERSION}/netavark.gz" "netavark.gz" "gzip"
     gunzip -f netavark.gz
     chmod +x netavark
 
-    download_tool "https://github.com/containers/aardvark-dns/releases/download/v1.10.0/aardvark-dns.gz" "aardvark-dns.gz" "gzip"
+    download_tool "https://github.com/containers/aardvark-dns/releases/download/${AARDVARK_VERSION}/aardvark-dns.gz" "aardvark-dns.gz" "gzip"
     gunzip -f aardvark-dns.gz
     chmod +x aardvark-dns
     
@@ -205,7 +212,8 @@ finish_installation() {
     echo "     --home $GOINFRE_PATH/homes/my-box \\"
     echo "     --volume $GOINFRE_PATH:$GOINFRE_PATH \\"
     echo "     --device /dev/input:/dev/input \\"
-    echo "     --device /dev/uinput:/dev/uinput"
+    echo "     --device /dev/uinput:/dev/uinput \\"
+    echo "     --yes"
     echo ""
 }
 
