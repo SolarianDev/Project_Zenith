@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ==========================================
-# Project Zenith (v3.0)
+# Project Zenith (v3.1)
 # ==========================================
 
 # Colors & Formatting
@@ -65,13 +65,13 @@ download_tool() {
     local url="$1"
     local output="$2"
     local expected_type="$3"
-
+    
     echo "   - Fetching $output..."
     if ! wget -q "$url" -O "$output"; then
         rm -f "$output"
         fatal "Failed to download $output from network."
     fi
-
+    
     if ! file "$output" | grep -qi "$expected_type"; then
         rm -f "$output"
         fatal "Downloaded file '$output' is invalid or corrupted (Expected: $expected_type). The source URL might be dead."
@@ -83,25 +83,26 @@ install_podman() {
     local TMP_DIR
     TMP_DIR=$(mktemp -d)
     cd "$TMP_DIR"
-
+    
     wget -q --show-progress "https://github.com/mgoltzsche/podman-static/releases/download/${PODMAN_VERSION}/podman-linux-amd64.tar.gz" -O podman.tar.gz
     
     if ! file podman.tar.gz | grep -qi "gzip"; then
         fatal "Podman archive is invalid or corrupted."
     fi
-
+    
     tar -xf podman.tar.gz
-
+    
     local PODMAN_BIN
     PODMAN_BIN=$(find . -name podman -type f | head -n 1)
+    
     if [ -z "$PODMAN_BIN" ]; then
         fatal "Could not locate podman binary in the downloaded archive."
     fi
-
+    
     rm -f "$INSTALL_DIR/podman"
     cp "$PODMAN_BIN" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/podman"
-
+    
     cd "$GOINFRE_PATH"
     rm -rf "$TMP_DIR"
     log_success "Podman installed successfully."
@@ -110,17 +111,17 @@ install_podman() {
 install_dependencies() {
     log_info "Downloading Dependencies..."
     cd "$INSTALL_DIR"
-
+    
     download_tool "https://github.com/containers/conmon/releases/download/${CONMON_VERSION}/conmon.amd64" "conmon" "ELF"
     chmod +x conmon
-
+    
     download_tool "https://github.com/containers/crun/releases/download/${CRUN_VERSION}/crun-${CRUN_VERSION}-linux-amd64" "crun" "ELF"
     chmod +x crun
-
+    
     download_tool "https://github.com/containers/netavark/releases/download/${NETAVARK_VERSION}/netavark.gz" "netavark.gz" "gzip"
     gunzip -f netavark.gz
     chmod +x netavark
-
+    
     download_tool "https://github.com/containers/aardvark-dns/releases/download/${AARDVARK_VERSION}/aardvark-dns.gz" "aardvark-dns.gz" "gzip"
     gunzip -f aardvark-dns.gz
     chmod +x aardvark-dns
@@ -130,7 +131,7 @@ install_dependencies() {
 
 generate_configs() {
     log_info "Generating Configuration Files..."
-
+    
     cat > "$CONFIG_DIR/storage.conf" <<EOL
 [storage]
 driver = "vfs"
@@ -170,7 +171,33 @@ EOL
 [registries.search]
 registries = ['docker.io']
 EOL
+
     log_success "Configurations generated."
+}
+
+verify_and_repair_podman() {
+    log_info "Verifying Podman health..."
+    
+    # Check if podman responds
+    if ! podman info >/dev/null 2>&1; then
+        log_warn "Podman is unresponsive. Attempting automatic self-repair..."
+        
+        # Migrate stops pause processes and recreates namespaces
+        podman system migrate >/dev/null 2>&1 || true
+        
+        # Clear lock files that can break rootless podman
+        rm -rf "/run/user/$USER_ID/containers" >/dev/null 2>&1 || true
+        rm -rf "/run/user/$USER_ID/podman" >/dev/null 2>&1 || true
+        
+        # Verify again
+        if ! podman info >/dev/null 2>&1; then
+            log_error "Automatic repair failed. Podman is still broken."
+        else
+            log_success "Podman successfully recovered!"
+        fi
+    else
+        log_success "Podman is functioning correctly."
+    fi
 }
 
 install_distrobox() {
@@ -202,17 +229,15 @@ finish_installation() {
     echo -e "\n${GREEN}==========================================${NC}"
     echo -e "${GREEN}       INSTALLATION COMPLETE!             ${NC}"
     echo -e "${GREEN}==========================================${NC}\n"
-
+    
     echo "1. Apply your shell configuration:"
     echo "   source ~/.zshrc  # (or source ~/.bashrc)"
     echo ""
-    echo "2. Create your container with CONTROLLER SUPPORT (Copy-Paste this):"
+    echo "2. Create your container (Copy-Paste this):"
     echo ""
     echo "   distrobox create --image ubuntu:latest --name my-box \\"
     echo "     --home $GOINFRE_PATH/homes/my-box \\"
     echo "     --volume $GOINFRE_PATH:$GOINFRE_PATH \\"
-    echo "     --device /dev/input:/dev/input \\"
-    echo "     --device /dev/uinput:/dev/uinput \\"
     echo "     --yes"
     echo ""
 }
@@ -223,14 +248,20 @@ finish_installation() {
 
 run_installation() {
     log_success "Detected Real Goinfre Path: ${GOINFRE_PATH}"
+    
     prepare_directories
     install_podman
     install_dependencies
     generate_configs
+    
+    verify_and_repair_podman
+    
     install_distrobox
+    
     log_info "Updating Shell Configurations..."
     update_shell_rc "$HOME/.zshrc"
     update_shell_rc "$HOME/.bashrc"
+    
     finish_installation
 }
 
@@ -249,7 +280,7 @@ run_repair() {
         log_info "Repair canceled by user. Returning to menu..."
         return
     fi
-
+    
     log_warn "Initiating Setup Repair..."
     log_info "Cleaning up old binaries and configurations..."
     
@@ -279,8 +310,8 @@ while true; do
     echo -e " 2) ${YELLOW}Repair Setup${NC}  (Fully resets and cleans old versions)"
     echo -e " 3) ${RED}Exit${NC}"
     echo -e "${BLUE}==========================================${NC}"
-
     read -p "Select an option [1-3]: " choice
+    
     case "$choice" in
         1 ) run_installation; break ;;
         2 ) run_repair; break ;;
