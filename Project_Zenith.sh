@@ -297,6 +297,22 @@ run_repair() {
     run_installation
 }
 
+run_quick_fix() {
+    echo -e "\n${BLUE}==============================================================${NC}"
+    echo -e "${BLUE}                 RESTORING PODMAN BINARY                      ${NC}"
+    echo -e "${BLUE}==============================================================${NC}"
+    log_info "Re-downloading and placing Podman into your goinfre bin directory..."
+    
+    prepare_directories
+    install_podman
+    verify_and_repair_podman
+    
+    echo -e "\n${GREEN}==========================================${NC}"
+    echo -e "${GREEN}       PODMAN BINARY RESTORED!            ${NC}"
+    echo -e "${GREEN}==========================================${NC}\n"
+    echo "Try creating your container again using your distrobox command."
+}
+
 # ==========================================
 # INTERACTIVE MENU
 # ==========================================
@@ -308,14 +324,16 @@ while true; do
     echo -e "${BLUE}==========================================${NC}"
     echo -e " 1) ${GREEN}Fresh Install${NC} (Downloads and sets up everything)"
     echo -e " 2) ${YELLOW}Repair Setup${NC}  (Fully resets and cleans old versions)"
-    echo -e " 3) ${RED}Exit${NC}"
+    echo -e " 3) ${BLUE}Quick Fix${NC}     (Restores Podman binary for container issues)"
+    echo -e " 4) ${RED}Exit${NC}"
     echo -e "${BLUE}==========================================${NC}"
-    read -p "Select an option [1-3]: " choice
+    read -p "Select an option [1-4]: " choice
     
     case "$choice" in
         1 ) run_installation; break ;;
         2 ) run_repair; break ;;
-        3 ) log_info "Exiting..."; exit 0 ;;
-        * ) log_error "Invalid selection. Please enter 1, 2, or 3."; sleep 1 ;;
+        3 ) run_quick_fix; break ;;
+        4 ) log_info "Exiting..."; exit 0 ;;
+        * ) log_error "Invalid selection. Please enter 1, 2, 3, or 4."; sleep 1 ;;
     esac
 done
