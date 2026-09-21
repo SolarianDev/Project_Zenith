@@ -1,16 +1,28 @@
 # Project Zenith
 
-**Project Zenith** is an automated deployment script designed to bring a fully functional, rootless Linux container environment to restricted macOS/Linux workstations (specifically tailored for 42 School environments using `goinfre` storage). 
+**Project Zenith** is an automated deployment script designed to bring a fully functional, rootless Linux container environment to restricted Linux workstations (specifically tailored for 42 School environments using `goinfre` storage). 
 
 By combining **Rootless Podman** with **Distrobox**, Project Zenith allows unprivileged users to create isolated development environments where they possess "root" access, install system packages (via `apt`, `pacman`, `dnf`), and seamlessly integrate with the host's home directory and hardware devices.
 
 ## How It Works (The User Perspective)
-When you run Project Zenith, it bypasses the need for system-level package managers (like `apt` or `brew`) which require administrator privileges.
+When you run Project Zenith, it bypasses the need for system-level package managers (like `apt`) which require administrator privileges.
 
 1. **Dynamic Pathing:** It detects your actual unprivileged user ID and dynamically maps out your personal `goinfre` storage (a large, temporary storage drive often used in 42 environments).
 2. **Binary Fetching:** It downloads pre-compiled, static binaries for Podman and its core dependencies directly from their official GitHub releases.
 3. **Configuration Injection:** It builds a custom Podman configuration tree in your `~/.config/containers` directory, instructing Podman to store all heavy container images and runtimes inside `goinfre` rather than your limited home directory quota.
 4. **Distrobox Wrapping:** Finally, it installs Distrobox, a wrapper around Podman that seamlessly mounts your home directory, USB devices, and audio/video sockets into the container, making the container feel like a native application on the host.
+
+## Interactive Menu Options
+Run the script anytime using:
+```bash
+./Project_Zenith.sh
+```
+
+* **1) Fresh Install:** Downloads and configures Podman, crun, conmon, networking, and Distrobox into `goinfre/bin`.
+* **2) Create Container:** Interactive container creator that prompts for container name and base image (Ubuntu, Debian, Arch, Fedora, or custom), ensuring homes and volumes are mapped to `goinfre`.
+* **3) Storage Manager:** Visualizes disk usage for `goinfre` and `containers/storage`, with options to run safe cache prune, aggressive image cleanup, lock clearing, or deleting individual container homes.
+* **4) Check for Updates:** Checks GitHub for a newer version of Project Zenith and safely updates and restarts the script in-place.
+* **5) Repair Setup:** Fully resets and wipes container configurations and binaries to reinstall cleanly.
 
 ## Implementation Details
 Project Zenith is implemented as a pure Bash script (`#!/usr/bin/env bash`) strictly utilizing POSIX-compliant tools (`curl`, `tar`, `find`, `readlink`) to ensure execution on heavily locked-down host machines.
